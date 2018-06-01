@@ -1,0 +1,50 @@
+{
+    "author": "Graeme Woods",
+    "dependencies": {},
+    "keywords": [],
+    "name": "tyger-shark",
+    "pebble": {
+        "displayName": "Tyger Shark Watchface",
+        "enableMultiJS": true,
+        "messageKeys": [],
+        "projectType": "native",
+        "resources": {
+            "media": [
+                {
+                    "file": "images/bt_icon.png",
+                    "name": "BT_ICON",
+                    "targetPlatforms": null,
+                    "type": "png"
+                },
+                {
+                    "file": "images/mute_icon.png",
+                    "name": "MUTE_ICON",
+                    "targetPlatforms": null,
+                    "type": "png"
+                },
+                {
+                    "file": "images/menu_icon.png",
+                    "menuIcon": true,
+                    "name": "MENU_ICON",
+                    "targetPlatforms": null,
+                    "type": "png"
+                },
+                {
+                    "file": "images/PebbleShark.png",
+                    "name": "BG_IMAGE",
+                    "targetPlatforms": null,
+                    "type": "png"
+                }
+            ]
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "diorite"
+        ],
+        "uuid": "77b4b888-5c9a-40b4-9dca-54f0eb498831",
+        "watchapp": {
+            "watchface": true
+        }
+    },
+    "version": "1.0.0"
+}
