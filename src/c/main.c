@@ -170,24 +170,22 @@ static void init() {
 	
 	//---------MUTE ICON---------//
 	mute_icon_layer = bitmap_layer_create(GRect(0, 0, 30, 30));		
+	bitmap_layer_set_background_color(mute_icon_layer, GColorWhite);	
+// --------------------- ^ NOT SETTING BACKGROUND ^ --------------------------------------------------	
 	mute_icon = gbitmap_create_with_resource(RESOURCE_ID_MUTE_ICON);	
 	bitmap_layer_set_compositing_mode(mute_icon_layer, GCompOpAssign);
 	bitmap_layer_set_bitmap(mute_icon_layer, mute_icon);
-	bitmap_layer_set_alignment(mute_icon_layer, GAlignCenter);
-	
-	bitmap_layer_set_background_color(mute_icon_layer, GColorWhite);
-// --------------------- ^ NOT SETTING BACKGROUND ^ --------------------------------------------------
-	
+	bitmap_layer_set_alignment(mute_icon_layer, GAlignCenter);		
 	layer_add_child(window_layer, bitmap_layer_get_layer(mute_icon_layer));
 
 	//---------BLUETOOTH ICON---------//
-	bt_icon_layer = bitmap_layer_create(GRect(114, 0, 30, 30));	
+	bt_icon_layer = bitmap_layer_create(GRect(114, 0, 30, 30));		
+	bitmap_layer_set_background_color(bt_icon_layer, GColorWhite);
+// --------------------- ^ NOT SETTING BACKGROUND ^ --------------------------------------------------	
 	bt_icon = gbitmap_create_with_resource(RESOURCE_ID_BT_ICON);	
 	bitmap_layer_set_compositing_mode(bt_icon_layer, GCompOpAssign);
 	bitmap_layer_set_bitmap(bt_icon_layer, bt_icon);
 	bitmap_layer_set_alignment(bt_icon_layer, GAlignCenter);	
-	bitmap_layer_set_background_color(mute_icon_layer, GColorWhite);
-// --------------------- ^ NOT SETTING BACKGROUND ^ --------------------------------------------------	
 	layer_add_child(window_layer, bitmap_layer_get_layer(bt_icon_layer));
 	
 	persist_write_bool(connect, connection_service_peek_pebble_app_connection());			
