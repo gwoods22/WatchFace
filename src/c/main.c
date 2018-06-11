@@ -7,20 +7,21 @@
 
 // 	APP_LOG(APP_LOG_LEVEL_DEBUG, "");
 
-static BitmapLayer *meri_image_layer;
-static GBitmap *meri_image;
+static BitmapLayer *image_layer;
+static GBitmap *image;
 
-static BitmapLayer *meri_bt_icon_layer;
-static GBitmap *meri_bt_icon;
+static BitmapLayer *bt_icon_layer;
+static GBitmap *bt_icon;
 
-static BitmapLayer *meri_mute_icon_layer;
-static GBitmap *meri_mute_icon;
+static BitmapLayer *mute_icon_layer;
+static GBitmap *mute_icon;
 
 static Window *s_main_window;
 Layer *window_layer;
 static TextLayer *s_time_layer;
 static TextLayer *s_date_layer;
 static TextLayer *s_battery_layer;
+static Layer *s_canvas_layer;
 uint32_t connect = 0;
 
 static void handle_battery(BatteryChargeState charge_state) {
@@ -30,38 +31,25 @@ static void handle_battery(BatteryChargeState charge_state) {
   text_layer_set_text(s_battery_layer, battery_text);
 }
 
-static void handle_mute(Layer *window_layer, int icon_width) {		
-	if (quiet_time_is_active()) {
-  	meri_mute_icon_layer = bitmap_layer_create(GRect(0, 0, icon_width, icon_width));
-		meri_mute_icon = gbitmap_create_with_resource(RESOURCE_ID_MUTE_ICON);	
-		bitmap_layer_set_compositing_mode(meri_mute_icon_layer, GCompOpAssign);
-		bitmap_layer_set_bitmap(meri_mute_icon_layer, meri_mute_icon);
-		bitmap_layer_set_alignment(meri_mute_icon_layer, GAlignCenter);
-		layer_add_child(window_layer, bitmap_layer_get_layer(meri_mute_icon_layer));
-  } else {		
-  	bitmap_layer_destroy(meri_mute_icon_layer);
-	}
-}
 
-static void handle_bluetooth(bool connected) {
-	
+static void handle_bluetooth(bool connected) {	
 	if (connected) {
-		persist_write_bool(connect, true);
-		bitmap_layer_destroy(meri_bt_icon_layer);
+		persist_write_bool(connect, true);		
 	} else {
-		if (persist_read_bool(connect)) {		
-			vibes_double_pulse();
+		if (persist_read_bool(connect)) {
+			vibes_double_pulse();			
+			persist_write_bool(connect, false);	
 		}
-		persist_write_bool(connect, false);
-		meri_bt_icon_layer = bitmap_layer_create(GRect(114, 0, 30,30));
-		meri_bt_icon = gbitmap_create_with_resource(RESOURCE_ID_BT_ICON);	
-		bitmap_layer_set_compositing_mode(meri_bt_icon_layer, GCompOpAssign);
-		bitmap_layer_set_bitmap(meri_bt_icon_layer, meri_bt_icon);
-		bitmap_layer_set_alignment(meri_bt_icon_layer, GAlignCenter);
-		layer_add_child(window_layer, bitmap_layer_get_layer(meri_bt_icon_layer));
-	}	
+	}
+	layer_set_hidden(bitmap_layer_get_layer(bt_icon_layer),connected);
+	// --------------------- ^ PROBLEM LINE ^ --------------------------------------------------
 }
 
+
+static void handle_mute() {		
+	layer_set_hidden(bitmap_layer_get_layer(mute_icon_layer),!quiet_time_is_active());
+	// --------------------- ^ PROBLEM LINE ^ --------------------------------------------------
+}
 
 static void handle_time(struct tm* current_time, TimeUnits units_changed) {
 	static char s_time_text[] = "00:00:00";	
@@ -73,37 +61,58 @@ static void handle_time(struct tm* current_time, TimeUnits units_changed) {
 	text_layer_set_text(s_date_layer, s_day_text);
 }
 
+static void canvas_update_proc(Layer *layer, GContext *ctx) {
+	//---------TIME BACKGROUND---------//
+	graphics_context_set_fill_color(ctx, GColorBlack);
+	GRect rect1 = GRect(28, 110, 95, 60);
+  graphics_draw_rect(ctx, rect1);
+	graphics_fill_rect(ctx, rect1, 0, GCornersAll);	
+	
+	//---------ICONS BACKGROUND---------//
+	graphics_context_set_fill_color(ctx, GColorWhite);
+	GRect rect2 = GRect(0, 0, 144, 28);
+  graphics_draw_rect(ctx, rect2);
+	graphics_fill_rect(ctx, rect2, 0, GCornersAll);
+}
 
 
-static void main_window_load(Window *window) {
-// 	Layer *window_layer = window_get_root_layer(window);
+
+static void main_window_load(Window *window) {	
+	//Grect( x, y, w, h )
   GRect bounds = layer_get_frame(window_layer);
-	int icon_width = 30;
 	
 	
-	meri_image_layer = bitmap_layer_create(bounds);
-  meri_image = gbitmap_create_with_resource(RESOURCE_ID_BG_IMAGE);	
-  bitmap_layer_set_compositing_mode(meri_image_layer, GCompOpAssign);
-  bitmap_layer_set_bitmap(meri_image_layer, meri_image);
-  bitmap_layer_set_alignment(meri_image_layer, GAlignCenter);
-  layer_add_child(window_layer, bitmap_layer_get_layer(meri_image_layer));
+	//-------BACKGROUND IMAGE-------//
+	image_layer = bitmap_layer_create(GRect(0, 28, bounds.size.w, bounds.size.h));
+  image = gbitmap_create_with_resource(RESOURCE_ID_BG_IMAGE);	
+  bitmap_layer_set_compositing_mode(image_layer, GCompOpAssign);
+  bitmap_layer_set_bitmap(image_layer, image);
+  bitmap_layer_set_alignment(image_layer, GAlignCenter);
+  layer_add_child(window_layer, bitmap_layer_get_layer(image_layer));
+	
+	//---------DRAWING---------//
+	s_canvas_layer = layer_create(bounds);
+	layer_set_update_proc(s_canvas_layer, canvas_update_proc);
+	layer_add_child(window_get_root_layer(window), s_canvas_layer);
 	
   
-	//															 Grect( x, y, w, h )
+	//---------TIME---------//
   s_time_layer = text_layer_create(GRect(0, bounds.size.h-45, bounds.size.w, 45));
   text_layer_set_text_color(s_time_layer, GColorWhite);
   text_layer_set_background_color(s_time_layer, GColorClear);
   text_layer_set_font(s_time_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
   text_layer_set_text_alignment(s_time_layer, GTextAlignmentCenter);
 	
+	//---------DATE---------//
 	s_date_layer = text_layer_create(GRect(0, 105, bounds.size.w, 45));
   text_layer_set_text_color(s_date_layer, GColorWhite);
   text_layer_set_background_color(s_date_layer, GColorClear);
   text_layer_set_font(s_date_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24));
   text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
-
+	
+	//---------BATTERY---------//
   s_battery_layer = text_layer_create(GRect(10, 0, bounds.size.w-10, 30));
-  text_layer_set_text_color(s_battery_layer, GColorWhite);
+  text_layer_set_text_color(s_battery_layer, GColorBlack);
   text_layer_set_background_color(s_battery_layer, GColorClear);
   text_layer_set_font(s_battery_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24));
   text_layer_set_text_alignment(s_battery_layer, GTextAlignmentCenter);
@@ -130,7 +139,7 @@ static void main_window_load(Window *window) {
   layer_add_child(window_layer, text_layer_get_layer(s_battery_layer));
 
   handle_battery(battery_state_service_peek());
-	handle_mute(window_layer, icon_width);
+	handle_mute();
 }
 
 static void main_window_unload(Window *window) {
@@ -140,17 +149,18 @@ static void main_window_unload(Window *window) {
   text_layer_destroy(s_time_layer);
 	text_layer_destroy(s_date_layer);
   text_layer_destroy(s_battery_layer);
-	gbitmap_destroy(meri_image);
-  bitmap_layer_destroy(meri_image_layer);
-	gbitmap_destroy(meri_bt_icon);
-  bitmap_layer_destroy(meri_bt_icon_layer);
-	gbitmap_destroy(meri_mute_icon);
-  bitmap_layer_destroy(meri_mute_icon_layer);
+	gbitmap_destroy(image);
+  bitmap_layer_destroy(image_layer);
+	
+	bitmap_layer_destroy(bt_icon_layer);	
+	gbitmap_destroy(bt_icon);
+	gbitmap_destroy(mute_icon);	
+	bitmap_layer_destroy(mute_icon_layer);
 }
 
 static void init() {
   s_main_window = window_create();
-  window_set_background_color(s_main_window, GColorBlack);
+  window_set_background_color(s_main_window, GColorWhite);
   window_set_window_handlers(s_main_window, (WindowHandlers) {
     .load = main_window_load,
     .unload = main_window_unload,
@@ -158,20 +168,32 @@ static void init() {
 	window_layer = window_get_root_layer(s_main_window);
   window_stack_push(s_main_window, true);
 	
-
-	if (connection_service_peek_pebble_app_connection()) {
-		persist_write_bool(connect, true);
-// 		bitmap_layer_destroy(meri_bt_icon_layer);
-	} else {
-		persist_write_bool(connect, false);
-		meri_bt_icon_layer = bitmap_layer_create(GRect(114, 0, 30,30));
-		meri_bt_icon = gbitmap_create_with_resource(RESOURCE_ID_BT_ICON);	
-		bitmap_layer_set_compositing_mode(meri_bt_icon_layer, GCompOpAssign);
-		bitmap_layer_set_bitmap(meri_bt_icon_layer, meri_bt_icon);
-		bitmap_layer_set_alignment(meri_bt_icon_layer, GAlignCenter);
-		layer_add_child(window_layer, bitmap_layer_get_layer(meri_bt_icon_layer));
-	}	
+	//---------MUTE ICON---------//
+	mute_icon_layer = bitmap_layer_create(GRect(0, 0, 30, 30));		
+	mute_icon = gbitmap_create_with_resource(RESOURCE_ID_MUTE_ICON);	
+	bitmap_layer_set_compositing_mode(mute_icon_layer, GCompOpAssign);
+	bitmap_layer_set_bitmap(mute_icon_layer, mute_icon);
+	bitmap_layer_set_alignment(mute_icon_layer, GAlignCenter);
 	
+	bitmap_layer_set_background_color(mute_icon_layer, GColorWhite);
+// --------------------- ^ NOT SETTING BACKGROUND ^ --------------------------------------------------
+	
+	layer_add_child(window_layer, bitmap_layer_get_layer(mute_icon_layer));
+
+	//---------BLUETOOTH ICON---------//
+	bt_icon_layer = bitmap_layer_create(GRect(114, 0, 30, 30));	
+	bt_icon = gbitmap_create_with_resource(RESOURCE_ID_BT_ICON);	
+	bitmap_layer_set_compositing_mode(bt_icon_layer, GCompOpAssign);
+	bitmap_layer_set_bitmap(bt_icon_layer, bt_icon);
+	bitmap_layer_set_alignment(bt_icon_layer, GAlignCenter);	
+	bitmap_layer_set_background_color(mute_icon_layer, GColorWhite);
+// --------------------- ^ NOT SETTING BACKGROUND ^ --------------------------------------------------	
+	layer_add_child(window_layer, bitmap_layer_get_layer(bt_icon_layer));
+	
+	persist_write_bool(connect, connection_service_peek_pebble_app_connection());			
+	layer_set_hidden(bitmap_layer_get_layer(bt_icon_layer),connection_service_peek_pebble_app_connection());		
+	layer_set_hidden(bitmap_layer_get_layer(mute_icon_layer),!quiet_time_is_active()); 
+	// --------------------- ^ layer_set_hidden works ^ --------------------------------------------------
 }
 
 static void deinit() {
